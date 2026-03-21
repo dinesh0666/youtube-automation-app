@@ -7,8 +7,7 @@
         "path": "darkfiles-producer",
         "options": {
           "rawBody": true
-        },
-        "authentication": "headerAuth"
+        }
       },
       "id": "webhook-trigger",
       "name": "Webhook Trigger",
