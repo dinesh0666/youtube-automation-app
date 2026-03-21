@@ -1,0 +1,338 @@
+{
+  "name": "Dark Files - Publisher Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "darkfiles-publisher",
+        "options": {
+          "rawBody": true
+        },
+        "authentication": "headerAuth"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "darkfiles-publisher"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.body.secret}}",
+              "operation": "equals",
+              "value2": "darkfiles-secret-2024"
+            }
+          ]
+        }
+      },
+      "id": "verify-secret",
+      "name": "Verify Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "channel-number",
+              "name": "channelNumber",
+              "value": "={{$node['Webhook Trigger'].json.body.channelNumber}}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "determine-channel",
+      "name": "Determine Channel",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://oauth2.googleapis.com/token",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "client_id",
+              "value": "={{$env.GOOGLE_CLIENT_ID}}"
+            },
+            {
+              "name": "client_secret",
+              "value": "={{$env.GOOGLE_CLIENT_SECRET}}"
+            },
+            {
+              "name": "refresh_token",
+              "value": "={{$node['Determine Channel'].json.channelNumber === 1 ? $env.YOUTUBE_REFRESH_TOKEN_CH1 : $env.YOUTUBE_REFRESH_TOKEN_CH2}}"
+            },
+            {
+              "name": "grant_type",
+              "value": "refresh_token"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-access-token",
+      "name": "Get YouTube Access Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$node['Get YouTube Access Token'].json.access_token}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "snippet",
+              "value": "={\"title\": \"{{$node['Webhook Trigger'].json.body.title}}\", \"description\": \"{{$node['Webhook Trigger'].json.body.description}}\\n\\n🔔 Subscribe for more true crime stories\\n\\n#TrueCrime #DarkFiles #CrimeDocumentary\", \"tags\": {{$node['Webhook Trigger'].json.body.tags}}, \"categoryId\": \"25\"}"
+            },
+            {
+              "name": "status",
+              "value": "={\"privacyStatus\": \"{{$node['Webhook Trigger'].json.body.publishNow ? 'public' : 'private'}}\", \"selfDeclaredMadeForKids\": false, \"publishAt\": \"{{$node['Webhook Trigger'].json.body.scheduledDate}}\"}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "init-upload",
+      "name": "Initialize YouTube Upload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Webhook Trigger'].json.body.videoUrl}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-video",
+      "name": "Download Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Initialize YouTube Upload'].json.headers.location}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "video/mp4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "binary",
+        "bodyBinaryPropertyName": "data",
+        "options": {}
+      },
+      "id": "upload-video",
+      "name": "Upload Video to YouTube",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Webhook Trigger'].json.body.callbackUrl}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "published"
+            },
+            {
+              "name": "contentId",
+              "value": "={{$node['Webhook Trigger'].json.body.contentId}}"
+            },
+            {
+              "name": "youtubeUrl",
+              "value": "=https://youtube.com/watch?v={{$node['Upload Video to YouTube'].json.id}}"
+            },
+            {
+              "name": "youtubeId",
+              "value": "={{$node['Upload Video to YouTube'].json.id}}"
+            },
+            {
+              "name": "channelName",
+              "value": "={{$node['Determine Channel'].json.channelNumber === 1 ? 'Dark Files' : 'Dark Files Tamil'}}"
+            },
+            {
+              "name": "publishedAt",
+              "value": "={{$now}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-success-callback",
+      "name": "Send Success Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Webhook Trigger'].json.body.callbackUrl}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "failed"
+            },
+            {
+              "name": "contentId",
+              "value": "={{$node['Webhook Trigger'].json.body.contentId}}"
+            },
+            {
+              "name": "error",
+              "value": "={{$json.error}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-error-callback",
+      "name": "Send Error Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verify Secret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Secret": {
+      "main": [
+        [
+          {
+            "node": "Determine Channel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Determine Channel": {
+      "main": [
+        [
+          {
+            "node": "Get YouTube Access Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get YouTube Access Token": {
+      "main": [
+        [
+          {
+            "node": "Initialize YouTube Upload",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize YouTube Upload": {
+      "main": [
+        [
+          {
+            "node": "Upload Video to YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Video": {
+      "main": [
+        [
+          {
+            "node": "Upload Video to YouTube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Video to YouTube": {
+      "main": [
+        [
+          {
+            "node": "Send Success Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-21T00:00:00.000Z",
+  "versionId": "1"
+}

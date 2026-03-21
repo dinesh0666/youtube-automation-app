@@ -1,0 +1,235 @@
+{
+  "name": "Dark Files - AI Researcher Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 1,11,21 * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule (3x per month)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.PERPLEXITY_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "llama-3.1-sonar-large-128k-online"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"system\", \"content\": \"You are a true crime researcher finding compelling cases for YouTube videos.\"}, {\"role\": \"user\", \"content\": \"Find 15 interesting true crime cases from the past year that would make compelling YouTube videos. For each case provide: Title, Victim name, Perpetrator name, Brief summary (2-3 sentences), Location, Date. Focus on lesser-known cases with dramatic elements. Format as JSON array.\"}]"
+            },
+            {
+              "name": "max_tokens",
+              "value": "4000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "research-cases",
+      "name": "Research 15 Cases (Perplexity)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cases = JSON.parse($input.item.json.choices[0].message.content);\n\nreturn cases.map(c => ({\n  json: {\n    title: c.title,\n    victim: c.victim,\n    perpetrator: c.perpetrator,\n    summary: c.summary,\n    location: c.location,\n    date: c.date,\n    status: 'research',\n    stage: 'New',\n    priority: 'Medium',\n    source: 'AI Researcher',\n    createdAt: new Date().toISOString()\n  }\n}));"
+      },
+      "id": "parse-cases",
+      "name": "Parse Cases",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/content",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "={{$json.title}}"
+            },
+            {
+              "name": "victim",
+              "value": "={{$json.victim}}"
+            },
+            {
+              "name": "perpetrator",
+              "value": "={{$json.perpetrator}}"
+            },
+            {
+              "name": "summary",
+              "value": "={{$json.summary}}"
+            },
+            {
+              "name": "location",
+              "value": "={{$json.location}}"
+            },
+            {
+              "name": "date",
+              "value": "={{$json.date}}"
+            },
+            {
+              "name": "status",
+              "value": "research"
+            },
+            {
+              "name": "stage",
+              "value": "New"
+            },
+            {
+              "name": "priority",
+              "value": "Medium"
+            },
+            {
+              "name": "source",
+              "value": "AI Researcher"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "add-to-queue",
+      "name": "Add to Content Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$itemIndex}}",
+              "operation": "equals",
+              "value2": "={{$items().length - 1}}"
+            }
+          ]
+        }
+      },
+      "id": "check-if-last",
+      "name": "Check If Last Case",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.TELEGRAM_BOT_TOKEN ? 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendMessage' : 'http://localhost:3000/api/webhook/notification'}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{$env.TELEGRAM_CHAT_ID}}"
+            },
+            {
+              "name": "text",
+              "value": "=🤖 AI Researcher: Added {{$items().length}} new true crime cases to the queue.\\n\\nTop case: {{$items()[0].json.title}}\\n\\nCheck dashboard: http://localhost:3000/dashboard/queue"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-notification",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 200]
+    }
+  ],
+  "connections": {
+    "Schedule (3x per month)": {
+      "main": [
+        [
+          {
+            "node": "Research 15 Cases (Perplexity)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research 15 Cases (Perplexity)": {
+      "main": [
+        [
+          {
+            "node": "Parse Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Cases": {
+      "main": [
+        [
+          {
+            "node": "Add to Content Queue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Content Queue": {
+      "main": [
+        [
+          {
+            "node": "Check If Last Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check If Last Case": {
+      "main": [
+        [
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-21T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,497 @@
+{
+  "name": "Dark Files - Producer Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "darkfiles-producer",
+        "options": {
+          "rawBody": true
+        },
+        "authentication": "headerAuth"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "darkfiles-producer"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.body.secret}}",
+              "operation": "equals",
+              "value2": "darkfiles-secret-2024"
+            }
+          ]
+        }
+      },
+      "id": "verify-secret",
+      "name": "Verify Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://api.perplexity.ai/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.PERPLEXITY_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "llama-3.1-sonar-large-128k-online"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"system\", \"content\": \"You are a true crime researcher. Provide comprehensive, factual information about criminal cases with dates, locations, and key details.\"}, {\"role\": \"user\", \"content\": \"Research this case in detail: {{$json.body.title}}. Victim: {{$json.body.victim}}. Perpetrator: {{$json.body.perpetrator}}. Provide timeline, motive, evidence, investigation, trial outcome.\"}]"
+            },
+            {
+              "name": "max_tokens",
+              "value": "4000"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "research-case",
+      "name": "Research Case (Perplexity)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.ANTHROPIC_API_KEY}}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-3-5-sonnet-20241022"
+            },
+            {
+              "name": "max_tokens",
+              "value": "4096"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Write a 8-10 minute YouTube script for this true crime case in conversational documentary style.\\n\\nCase: {{$node['Webhook Trigger'].json.body.title}}\\nResearch: {{$node['Research Case (Perplexity)'].json.choices[0].message.content}}\\n\\nStyle: Conversational, dramatic pacing, audience questions, natural pauses. Format: [INTRO], [SECTION 1], etc. No host name.\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "write-script",
+      "name": "Write Script (Claude)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.ANTHROPIC_API_KEY}}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-3-5-sonnet-20241022"
+            },
+            {
+              "name": "max_tokens",
+              "value": "2048"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Review this true crime script for accuracy, pacing, and engagement. Suggest improvements.\\n\\nScript: {{$node['Write Script (Claude)'].json.content[0].text}}\\n\\nCheck: Facts, flow, dramatic timing, audience engagement.\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "review-script",
+      "name": "AI Review Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.elevenlabs.io/v1/text-to-speech/{{$env.ELEVENLABS_VOICE_EN}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "={{$env.ELEVENLABS_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{$node['Write Script (Claude)'].json.content[0].text}}"
+            },
+            {
+              "name": "model_id",
+              "value": "eleven_turbo_v2_5"
+            },
+            {
+              "name": "voice_settings",
+              "value": "={\"stability\": 0.5, \"similarity_boost\": 0.75}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "generate-voiceover",
+      "name": "Generate Voiceover (ElevenLabs)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.ANTHROPIC_API_KEY}}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "claude-3-5-sonnet-20241022"
+            },
+            {
+              "name": "max_tokens",
+              "value": "1024"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Generate 8 image prompts for this true crime video. Each prompt should describe a dramatic, cinematic scene.\\n\\nScript: {{$node['Write Script (Claude)'].json.content[0].text}}\\n\\nFormat: One prompt per line, 20-30 words each. Dark, moody, realistic style.\"}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-image-prompts",
+      "name": "Generate Image Prompts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "image-urls",
+              "name": "image_urls",
+              "value": "={{$node['Generate Image Prompts'].json.content[0].text.split('\\n').filter(p => p.trim()).map(prompt => 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt + ' cinematic dark moody realistic')).join(',')}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "generate-images",
+      "name": "Generate Images (Pollinations)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://api.shotstack.io/{{$env.SHOTSTACK_ENV}}/render",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{$env.SHOTSTACK_API_KEY}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "timeline",
+              "value": "={\"tracks\": [{\"clips\": [{\"asset\": {\"type\": \"audio\", \"src\": \"data:audio/mp3;base64,\" + $node['Generate Voiceover (ElevenLabs)'].binary.data.toString('base64')}, \"start\": 0, \"length\": \"auto\"}]}, {\"clips\": {{$node['Generate Images (Pollinations)'].json.image_urls.split(',').map((url, i) => ({asset: {type: 'image', src: url}, start: i * 5, length: 5, transition: {in: 'fade', out: 'fade'}}))}}]}]}"
+            },
+            {
+              "name": "output",
+              "value": "={\"format\": \"mp4\", \"resolution\": \"1080\"}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-video",
+      "name": "Create Video (Shotstack)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Webhook Trigger'].json.body.callbackUrl}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "contentId",
+              "value": "={{$node['Webhook Trigger'].json.body.contentId}}"
+            },
+            {
+              "name": "videoUrl",
+              "value": "={{$node['Create Video (Shotstack)'].json.response.url}}"
+            },
+            {
+              "name": "script",
+              "value": "={{$node['Write Script (Claude)'].json.content[0].text}}"
+            },
+            {
+              "name": "voiceoverUrl",
+              "value": "data:audio/mp3;base64,..."
+            },
+            {
+              "name": "duration",
+              "value": "={{$node['Create Video (Shotstack)'].json.response.duration}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-callback",
+      "name": "Send Callback to Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1850, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$node['Webhook Trigger'].json.body.callbackUrl}}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "failed"
+            },
+            {
+              "name": "contentId",
+              "value": "={{$node['Webhook Trigger'].json.body.contentId}}"
+            },
+            {
+              "name": "error",
+              "value": "={{$json.error}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-error",
+      "name": "Send Error Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verify Secret",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Secret": {
+      "main": [
+        [
+          {
+            "node": "Research Case (Perplexity)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Case (Perplexity)": {
+      "main": [
+        [
+          {
+            "node": "Write Script (Claude)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Script (Claude)": {
+      "main": [
+        [
+          {
+            "node": "AI Review Script",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Image Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Review Script": {
+      "main": [
+        [
+          {
+            "node": "Generate Voiceover (ElevenLabs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Image Prompts": {
+      "main": [
+        [
+          {
+            "node": "Generate Images (Pollinations)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Voiceover (ElevenLabs)": {
+      "main": [
+        [
+          {
+            "node": "Create Video (Shotstack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Images (Pollinations)": {
+      "main": [
+        [
+          {
+            "node": "Create Video (Shotstack)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Video (Shotstack)": {
+      "main": [
+        [
+          {
+            "node": "Send Callback to Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2026-03-21T00:00:00.000Z",
+  "versionId": "1"
+}
