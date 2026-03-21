@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: darkfiles-n8n
+    runtime: docker
+    repo: https://github.com/dinesh0666/youtube-automation-app.git
+    region: singapore
+    plan: free
+    branch: main
+    dockerfilePath: ./render-deploy/Dockerfile
+    envVars:
+      - key: N8N_HOST
+        value: darkfiles-n8n.onrender.com
+      - key: N8N_PORT
+        value: 10000
+      - key: N8N_PROTOCOL
+        value: https
+      - key: WEBHOOK_URL
+        value: https://darkfiles-n8n.onrender.com
+      - key: GENERIC_TIMEZONE
+        value: Asia/Kolkata
+      - key: DB_TYPE
+        value: postgresdb
+      - key: DB_POSTGRESDB_HOST
+        sync: false
+      - key: DB_POSTGRESDB_PORT
+        value: 5432
+      - key: DB_POSTGRESDB_DATABASE
+        sync: false
+      - key: DB_POSTGRESDB_USER
+        sync: false
+      - key: DB_POSTGRESDB_PASSWORD
+        sync: false
+      - key: N8N_ENCRYPTION_KEY
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: LEONARDO_API_KEY
+        sync: false
+      - key: SHOTSTACK_API_KEY
+        sync: false
+      - key: PERPLEXITY_API_KEY
+        sync: false
