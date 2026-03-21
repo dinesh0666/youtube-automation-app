@@ -5,11 +5,13 @@ Copy-paste these into Render Dashboard → Environment Variables:
 ## Required Configuration
 
 ```
-N8N_HOST=darkfiles-n8n.onrender.com
+N8N_HOST=youtube-automation-app-j19x.onrender.com
 N8N_PORT=10000
 N8N_PROTOCOL=https
-WEBHOOK_URL=https://darkfiles-n8n.onrender.com
+WEBHOOK_URL=https://youtube-automation-app-j19x.onrender.com
 GENERIC_TIMEZONE=Asia/Kolkata
+N8N_RUNNERS_ENABLED=false
+EXECUTIONS_MODE=regular
 ```
 
 ## Database (Nhost PostgreSQL)
