@@ -9,12 +9,11 @@ Before importing workflows, ensure you have:
 ✅ n8n running at: `https://youtube-automation-app-j19x.onrender.com/`  
 ✅ Admin account created  
 ✅ API keys ready:
-- Anthropic (Claude)
-- ElevenLabs
-- Leonardo or Pollinations (for images)
-- Shotstack
-- Perplexity
-- Google/YouTube OAuth
+- Anthropic (Claude) - **Required** for research, script writing, and case generation
+- ElevenLabs - **Required** for voiceover
+- Leonardo or Pollinations - **Optional** for images (Pollinations is free)
+- Shotstack - **Required** for video editing
+- Google/YouTube OAuth - **Required** for publishing
 
 ## 🚀 Quick Start (15 minutes)
 
@@ -42,7 +41,6 @@ ELEVENLABS_VOICE_TA=your-tamil-voice-id
 LEONARDO_API_KEY=your-key-here
 SHOTSTACK_API_KEY=your-key-here
 SHOTSTACK_ENV=stage
-PERPLEXITY_API_KEY=pplx-your-key-here
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 YOUTUBE_REFRESH_TOKEN_CH1=your-refresh-token-1
@@ -158,7 +156,7 @@ From `http://localhost:3000/dashboard/approve`:
 ```
 Webhook → Verify Secret
   ↓
-Research Case (Perplexity) → Find facts, timeline, evidence
+Research Case (Claude) → Find facts, timeline, evidence from training data
   ↓
 Write Script (Claude) → 8-10 minute conversational script
   ↓
@@ -237,7 +235,7 @@ Send Callback → Dashboard gets YouTube URL
 ```
 Schedule Trigger (3x/month)
   ↓
-Research 15 Cases (Perplexity) → Find compelling cases
+Research 15 Cases (Claude) → Generate compelling case ideas from training data
   ↓
 Parse Cases → Extract structured data
   ↓
@@ -311,10 +309,11 @@ Free tiers:
 - ✅ Render: 750 hours/month
 - ✅ n8n: Unlimited workflows on self-hosted
 - ⚠️ APIs have usage limits:
-  - Perplexity: Check your account
+  - Anthropic: $5 free credit, then pay-as-you-go (~$3-5 per video)
   - ElevenLabs: 10k characters/month free
   - Shotstack: 20 renders/month free (stage env)
   - YouTube: 10k API units/day
+  - Pollinations: Free unlimited AI images
 
 ### Optimize Performance
 

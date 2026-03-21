@@ -37,15 +37,19 @@
     },
     {
       "parameters": {
-        "url": "https://api.perplexity.ai/chat/completions",
+        "url": "https://api.anthropic.com/v1/messages",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "=Bearer {{$env.PERPLEXITY_API_KEY}}"
+              "name": "x-api-key",
+              "value": "={{$env.ANTHROPIC_API_KEY}}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
             }
           ]
         },
@@ -54,22 +58,22 @@
           "parameters": [
             {
               "name": "model",
-              "value": "llama-3.1-sonar-large-128k-online"
-            },
-            {
-              "name": "messages",
-              "value": "=[{\"role\": \"system\", \"content\": \"You are a true crime researcher. Provide comprehensive, factual information about criminal cases with dates, locations, and key details.\"}, {\"role\": \"user\", \"content\": \"Research this case in detail: {{$json.body.title}}. Victim: {{$json.body.victim}}. Perpetrator: {{$json.body.perpetrator}}. Provide timeline, motive, evidence, investigation, trial outcome.\"}]"
+              "value": "claude-3-5-sonnet-20241022"
             },
             {
               "name": "max_tokens",
-              "value": "4000"
+              "value": "4096"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Research this true crime case and provide comprehensive details:\\n\\nCase: {{$node['Webhook Trigger'].json.body.title}}\\nVictim: {{$node['Webhook Trigger'].json.body.victim}}\\nPerpetrator: {{$node['Webhook Trigger'].json.body.perpetrator}}\\nSummary: {{$node['Webhook Trigger'].json.body.summary}}\\n\\nProvide: Timeline of events, motive, evidence found, investigation details, trial outcome, and any significant facts. Be factual and detailed.\"}]"
             }
           ]
         },
         "options": {}
       },
       "id": "research-case",
-      "name": "Research Case (Perplexity)",
+      "name": "Research Case (Claude)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [650, 200]
@@ -105,7 +109,7 @@
             },
             {
               "name": "messages",
-              "value": "=[{\"role\": \"user\", \"content\": \"Write a 8-10 minute YouTube script for this true crime case in conversational documentary style.\\n\\nCase: {{$node['Webhook Trigger'].json.body.title}}\\nResearch: {{$node['Research Case (Perplexity)'].json.choices[0].message.content}}\\n\\nStyle: Conversational, dramatic pacing, audience questions, natural pauses. Format: [INTRO], [SECTION 1], etc. No host name.\"}]"
+              "value": "=[{\"role\": \"user\", \"content\": \"Write a 8-10 minute YouTube script for this true crime case in conversational documentary style.\\n\\nCase: {{$node['Webhook Trigger'].json.body.title}}\\nResearch: {{$node['Research Case (Claude)'].json.content[0].text}}\\n\\nStyle: Conversational, dramatic pacing, audience questions, natural pauses. Format: [INTRO], [SECTION 1], etc. No host name.\"}]"
             }
           ]
         },
@@ -388,7 +392,7 @@
       "main": [
         [
           {
-            "node": "Research Case (Perplexity)",
+            "node": "Research Case (Claude)",
             "type": "main",
             "index": 0
           }
@@ -402,7 +406,7 @@
         ]
       ]
     },
-    "Research Case (Perplexity)": {
+    "Research Case (Claude)": {
       "main": [
         [
           {

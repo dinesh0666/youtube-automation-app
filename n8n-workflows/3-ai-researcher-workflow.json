@@ -20,15 +20,19 @@
     },
     {
       "parameters": {
-        "url": "https://api.perplexity.ai/chat/completions",
+        "url": "https://api.anthropic.com/v1/messages",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
-              "name": "Authorization",
-              "value": "=Bearer {{$env.PERPLEXITY_API_KEY}}"
+              "name": "x-api-key",
+              "value": "={{$env.ANTHROPIC_API_KEY}}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
             }
           ]
         },
@@ -37,29 +41,29 @@
           "parameters": [
             {
               "name": "model",
-              "value": "llama-3.1-sonar-large-128k-online"
-            },
-            {
-              "name": "messages",
-              "value": "=[{\"role\": \"system\", \"content\": \"You are a true crime researcher finding compelling cases for YouTube videos.\"}, {\"role\": \"user\", \"content\": \"Find 15 interesting true crime cases from the past year that would make compelling YouTube videos. For each case provide: Title, Victim name, Perpetrator name, Brief summary (2-3 sentences), Location, Date. Focus on lesser-known cases with dramatic elements. Format as JSON array.\"}]"
+              "value": "claude-3-5-sonnet-20241022"
             },
             {
               "name": "max_tokens",
-              "value": "4000"
+              "value": "4096"
+            },
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": \"Generate 15 compelling true crime cases that would make great YouTube videos. Focus on lesser-known cases with dramatic elements from various time periods and locations.\\n\\nFor each case provide:\\n- Title (compelling, 5-8 words)\\n- Victim name\\n- Perpetrator name\\n- Brief summary (2-3 sentences)\\n- Location (city, country)\\n- Date/Year\\n\\nFormat as a JSON array with keys: title, victim, perpetrator, summary, location, date\"}]"
             }
           ]
         },
         "options": {}
       },
       "id": "research-cases",
-      "name": "Research 15 Cases (Perplexity)",
+      "name": "Research 15 Cases (Claude)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
       "position": [450, 300]
     },
     {
       "parameters": {
-        "jsCode": "const cases = JSON.parse($input.item.json.choices[0].message.content);\n\nreturn cases.map(c => ({\n  json: {\n    title: c.title,\n    victim: c.victim,\n    perpetrator: c.perpetrator,\n    summary: c.summary,\n    location: c.location,\n    date: c.date,\n    status: 'research',\n    stage: 'New',\n    priority: 'Medium',\n    source: 'AI Researcher',\n    createdAt: new Date().toISOString()\n  }\n}));"
+        "jsCode": "const cases = JSON.parse($input.item.json.content[0].text);\n\nreturn cases.map(c => ({\n  json: {\n    title: c.title,\n    victim: c.victim,\n    perpetrator: c.perpetrator,\n    summary: c.summary,\n    location: c.location,\n    date: c.date,\n    status: 'research',\n    stage: 'New',\n    priority: 'Medium',\n    source: 'AI Researcher',\n    createdAt: new Date().toISOString()\n  }\n}));"
       },
       "id": "parse-cases",
       "name": "Parse Cases",
@@ -171,14 +175,14 @@
       "main": [
         [
           {
-            "node": "Research 15 Cases (Perplexity)",
+            "node": "Research 15 Cases (Claude)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Research 15 Cases (Perplexity)": {
+    "Research 15 Cases (Claude)": {
       "main": [
         [
           {
